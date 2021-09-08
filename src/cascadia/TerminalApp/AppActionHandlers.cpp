@@ -875,6 +875,16 @@ namespace winrt::TerminalApp::implementation
         }
     }
 
+    void TerminalPage::_HandleHighlightCursor(const IInspectable& /*sender*/,
+                                              const ActionEventArgs& args)
+    {
+        if (const auto termControl{ _GetActiveControl() })
+        {
+            termControl.HighlightCursor();
+            args.Handled(true);
+        }
+    }
+
     void TerminalPage::_HandleClearBuffer(const IInspectable& /*sender*/,
                                           const ActionEventArgs& args)
     {

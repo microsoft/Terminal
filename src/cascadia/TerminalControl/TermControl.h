@@ -102,6 +102,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         void BellLightOn();
 
+        void HighlightCursor();
+
         bool ReadOnly() const noexcept;
         void ToggleReadOnly();
 
@@ -158,6 +160,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         bool _initializedTerminal{ false };
 
         std::shared_ptr<ThrottledFuncLeading> _playWarningBell;
+        std::shared_ptr<ThrottledFuncLeading> _moveCursorLight;
 
         struct ScrollBarUpdate
         {
@@ -260,6 +263,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         void _Search(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
         void _CloseSearchBoxControl(const winrt::Windows::Foundation::IInspectable& sender, Windows::UI::Xaml::RoutedEventArgs const& args);
+
+        bool _MoveCursorLightHelper();
 
         // TSFInputControl Handlers
         void _CompositionCompleted(winrt::hstring text);

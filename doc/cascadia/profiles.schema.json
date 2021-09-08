@@ -262,6 +262,7 @@
         "findMatch",
         "focusPane",
         "globalSummon",
+        "highlightCursor",
         "identifyWindow",
         "identifyWindows",
         "moveFocus",
@@ -1026,6 +1027,17 @@
         }
       ]
     },
+    "HighlightCursorAction": {
+      "description": "The action to shine a spotlight on the current cursor location. If the cursor is off the screen, this action does nothing.",
+      "allOf": [
+        { "$ref": "#/definitions/ShortcutAction" },
+        {
+          "properties": {
+            "action": { "type": "string", "pattern": "highlightCursor" }
+          }
+        }
+      ]
+    },
     "Keybinding": {
       "additionalProperties": false,
       "properties": {
@@ -1062,6 +1074,7 @@
               { "$ref": "#/definitions/FocusPaneAction" },
               { "$ref": "#/definitions/GlobalSummonAction" },
               { "$ref": "#/definitions/QuakeModeAction" },
+              { "$ref": "#/definitions/HighlightCursorAction" },
               { "type": "null" }
             ]
         },
