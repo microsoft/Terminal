@@ -106,6 +106,46 @@ static constexpr til::point point_offset_by_line(const til::point start, const t
     return { pos_x, pos_y };
 }
 
+static constexpr til::CoordType viewportHeight = 80;
+static constexpr til::point point_offset_by_viewport(const til::point start, const til::rect& bounds, til::CoordType amt)
+{
+    // X = left boundary for UIA
+    auto pos_x = bounds.left;
+    auto pos_y = start.y;
+    while (amt != 0)
+    {
+        if (amt > 0)
+        {
+            if (pos_y >= bounds.bottom)
+            {
+                pos_y = bounds.bottom;
+                break;
+            }
+            else
+            {
+                pos_y += viewportHeight;
+                pos_y = std::min(pos_y, bounds.bottom);
+            }
+            --amt;
+        }
+        else
+        {
+            if (pos_y <= bounds.top)
+            {
+                pos_y = bounds.top;
+                break;
+            }
+            else
+            {
+                pos_y -= viewportHeight;
+                pos_y = std::max(pos_y, 0);
+            }
+            ++amt;
+        }
+    }
+    return { pos_x, pos_y };
+}
+
 // IMPORTANT: reference this _after_ defining point_offset_by_XXX. We need it for some definitions
 #include "GeneratedUiaTextRangeMovementTests.g.cpp"
 
@@ -329,6 +369,7 @@ class UiaTextRangeTests
             return L"Line";
         case TextUnit_Paragraph:
         case TextUnit_Page:
+            return L"Page";
         case TextUnit_Document:
         default:
             return L"Document";
@@ -1332,6 +1373,7 @@ class UiaTextRangeTests
         const til::point lastLineStart{ bufferSize.left, documentEndInclusive.y };
         const auto secondToLastLinePos{ point_offset_by_line(lastLineStart, bufferSize, -1) };
         const til::point secondToLastCharacterPos{ documentEndInclusive.x - 1, documentEndInclusive.y };
+        const auto lastPageStart{ point_offset_by_viewport(documentEndExclusive, bufferSize, -1) };
 
         // Iterate over each TextUnit. If we don't support
         // the given TextUnit, we're supposed to fallback
@@ -1391,6 +1433,11 @@ class UiaTextRangeTests
             VERIFY_ARE_EQUAL(lastLineStart, utr->_start);
             VERIFY_ARE_EQUAL(documentEndExclusive, utr->_end);
         }
+        else if (textUnit <= TextUnit::TextUnit_Page)
+        {
+            VERIFY_ARE_EQUAL(origin, utr->_start);
+            VERIFY_ARE_EQUAL(documentEndExclusive, utr->_end);
+        }
         else // textUnit <= TextUnit::TextUnit_Document:
         {
             VERIFY_ARE_EQUAL(origin, utr->_start);
@@ -1436,6 +1483,12 @@ class UiaTextRangeTests
             VERIFY_ARE_EQUAL(-1, moveAmt);
             VERIFY_ARE_EQUAL(degenerate || !atDocumentEnd ? lastLineStart : secondToLastLinePos, utr->_start);
             VERIFY_ARE_EQUAL(lastLineStart, utr->_end);
+        }
+        else if (textUnit <= TextUnit::TextUnit_Page)
+        {
+            VERIFY_ARE_EQUAL(degenerate || !atDocumentEnd ? -1 : 0, moveAmt);
+            VERIFY_ARE_EQUAL(lastPageStart, utr->_start);
+            VERIFY_ARE_EQUAL(degenerate || !atDocumentEnd ? lastPageStart : documentEndExclusive, utr->_end);
         }
         else // textUnit <= TextUnit::TextUnit_Document:
         {

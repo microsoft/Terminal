@@ -326,6 +326,47 @@ void UiaTextRangeBase::_expandToEnclosingUnit(TextUnit unit)
             _end.y = _start.y + 1;
         }
     }
+    else if (unit <= TextUnit_Page)
+    {
+        // expand to page (viewport)
+        const auto viewport = _pData->GetViewport();
+        if (viewport.IsInBounds(_start))
+        {
+            // return current viewport
+            _start = viewport.Origin();
+            _end = std::min(documentEnd, viewport.EndExclusive());
+        }
+        else if (_start < viewport.Origin())
+        {
+            // return "previous" viewport
+            auto returnedViewport = viewport;
+            while (!returnedViewport.IsInBounds(_start))
+            {
+                const til::point newOrigin{ returnedViewport.Left(), std::max(returnedViewport.Top() - returnedViewport.Height(), bufferSize.Top()) };
+                returnedViewport = Viewport::FromDimensions(newOrigin, returnedViewport.Dimensions());
+            }
+            _start = returnedViewport.Origin();
+            _end = returnedViewport.EndExclusive();
+        }
+        else if (_start == documentEnd)
+        {
+            // return "last" viewport
+            _start = { bufferSize.Left(), std::max(documentEnd.y - viewport.Height(), bufferSize.Top()) };
+            _end = documentEnd;
+        }
+        else
+        {
+            // return "next" viewport
+            auto returnedViewport = viewport;
+            while (!returnedViewport.IsInBounds(_start))
+            {
+                const til::point newOrigin{ returnedViewport.EndExclusive() };
+                returnedViewport = Viewport::FromDimensions(newOrigin, returnedViewport.Dimensions());
+            }
+            _start = returnedViewport.Origin();
+            _end = std::min(returnedViewport.EndExclusive(), documentEnd);
+        }
+    }
     else
     {
         // expand to document
@@ -1077,6 +1118,10 @@ try
         {
             _moveEndpointByUnitLine(count, endpoint, pRetVal, preventBoundary);
         }
+        else if (unit <= TextUnit::TextUnit_Page)
+        {
+            _moveEndpointByUnitPage(count, endpoint, pRetVal, preventBoundary);
+        }
         else if (unit <= TextUnit::TextUnit_Document)
         {
             _moveEndpointByUnitDocument(count, endpoint, pRetVal, preventBoundary);
@@ -1148,6 +1193,10 @@ IFACEMETHODIMP UiaTextRangeBase::MoveEndpointByUnit(_In_ TextPatternRangeEndpoin
         else if (unit <= TextUnit::TextUnit_Line)
         {
             _moveEndpointByUnitLine(count, endpoint, pRetVal);
+        }
+        else if (unit <= TextUnit::TextUnit_Page)
+        {
+            _moveEndpointByUnitPage(count, endpoint, pRetVal);
         }
         else if (unit <= TextUnit::TextUnit_Document)
         {
@@ -1693,6 +1742,115 @@ void UiaTextRangeBase::_moveEndpointByUnitLine(_In_ const int moveCount,
             if (success)
             {
                 nextPos.x = bufferSize.Left();
+                resultPos = nextPos;
+                (*pAmountMoved)--;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    SetEndpoint(endpoint, resultPos);
+}
+
+// Routine Description:
+// - moves the UTR's endpoint by moveCount times by line.
+// - if endpoints crossed, the degenerate range is created and both endpoints are moved
+// - a successful movement on start entails start being at Left()
+// - a successful movement on end entails end being at Left() of the NEXT line
+// Arguments:
+// - moveCount - the number of times to move
+// - endpoint - the endpoint to move
+// - pAmountMoved - the number of times that the return values are "moved"
+// - preventBoundary - true --> the range encompasses the unit we're on; prevent movement onto boundaries
+//                     false --> act like we're just moving an endpoint; allow movement onto boundaries
+// Return Value:
+// - <none>
+void UiaTextRangeBase::_moveEndpointByUnitPage(_In_ const int moveCount,
+                                               _In_ const TextPatternRangeEndpoint endpoint,
+                                               _Out_ const gsl::not_null<int*> pAmountMoved,
+                                               _In_ const bool preventBoundary) noexcept
+{
+    *pAmountMoved = 0;
+
+    if (moveCount == 0)
+    {
+        return;
+    }
+
+    const auto moveDirection = (moveCount > 0) ? MovementDirection::Forward : MovementDirection::Backward;
+    const auto bufferSize = _getOptimizedBufferSize();
+
+    auto documentEnd{ bufferSize.EndExclusive() };
+    try
+    {
+        documentEnd = _getDocumentEnd();
+    }
+    CATCH_LOG();
+
+    auto success = true;
+    auto resultPos = GetEndpoint(endpoint);
+
+    const auto viewportSize = _pData->GetViewport().Dimensions();
+    while (std::abs(*pAmountMoved) < std::abs(moveCount) && success)
+    {
+        auto nextPos = resultPos;
+        switch (moveDirection)
+        {
+        case MovementDirection::Forward:
+        {
+            if (nextPos.Y >= documentEnd.Y)
+            {
+                // Corner Case: we're past the limit
+                // Clamp us to the limit
+                resultPos = documentEnd;
+                success = false;
+            }
+            else if (preventBoundary && nextPos.Y >= documentEnd.Y - viewportSize.Y)
+            {
+                // Corner Case: we're just before the limit
+                // and we're not allowed onto the exclusive end.
+                // Fail to move.
+                success = false;
+            }
+            else
+            {
+                nextPos.X = bufferSize.Left();
+                nextPos.Y = std::min(nextPos.Y + viewportSize.Y, documentEnd.Y);
+                success = true;
+                resultPos = nextPos;
+                (*pAmountMoved)++;
+            }
+            break;
+        }
+        case MovementDirection::Backward:
+        {
+            if (preventBoundary)
+            {
+                if (nextPos == bufferSize.Origin())
+                {
+                    // can't move past top
+                    success = false;
+                    break;
+                }
+                else if (nextPos.Y <= bufferSize.Top() + viewportSize.Y)
+                {
+                    // GH#10924: as a non-degenerate range, we are supposed to act
+                    // like we already encompass the line.
+                    // Move to the left boundary so we try to wrap around
+                    nextPos = bufferSize.Origin();
+                }
+            }
+
+            // NOTE: Automatically detects if we are trying to move past origin
+            success = bufferSize.DecrementInBounds(nextPos, true);
+
+            if (success)
+            {
+                nextPos.X = bufferSize.Left();
+                nextPos.Y = std::max(nextPos.Y - viewportSize.Y + 1, bufferSize.Top());
                 resultPos = nextPos;
                 (*pAmountMoved)--;
             }
