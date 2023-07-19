@@ -163,9 +163,11 @@ private:
     void _startFrameTimer();
     void _stopFrameTimer();
     void _updateFrameColor(const winrt::Windows::Foundation::IInspectable&, const winrt::Windows::Foundation::IInspectable&);
+    void _OnCloseRequestedWithMultipleTabsOpen(const winrt::TerminalApp::TerminalPage&, const winrt::TerminalApp::CloseRequestedWithMultipleTabsArgs&);
 
     winrt::event_token _GetWindowLayoutRequestedToken;
     winrt::event_token _frameTimerToken;
+    winrt::event_token _WindowMovedToken;
 
     // Helper struct. By putting these all into one struct, we can revoke them
     // all at once, by assigning _revokers to a fresh Revokers instance. That'll
@@ -207,6 +209,7 @@ private:
 
         winrt::Microsoft::Terminal::Remoting::WindowManager::QuitAllRequested_revoker QuitAllRequested;
         winrt::Microsoft::Terminal::Remoting::Peasant::SendContentRequested_revoker SendContentRequested;
+        winrt::TerminalApp::TerminalWindow::CloseRequestedWithMultipleTabs_revoker CloseRequestedWithMultipleTabs;
     } _revokers{};
 
     // our IslandWindow is not a WinRT type. It can't make auto_revokers like

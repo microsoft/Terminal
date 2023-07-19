@@ -381,7 +381,7 @@ void AppHost::Initialize()
     _revokers.RequestMoveContent = _windowLogic.RequestMoveContent(winrt::auto_revoke, { this, &AppHost::_handleMoveContent });
     _revokers.RequestReceiveContent = _windowLogic.RequestReceiveContent(winrt::auto_revoke, { this, &AppHost::_handleReceiveContent });
     _revokers.SendContentRequested = _peasant.SendContentRequested(winrt::auto_revoke, { this, &AppHost::_handleSendContent });
-
+    _revokers.CloseRequestedWithMultipleTabs = _windowLogic.CloseRequestedWithMultipleTabs(winrt::auto_revoke, { this, &AppHost::_OnCloseRequestedWithMultipleTabsOpen });
     // Add our GetWindowLayoutRequested handler AFTER the xaml island is
     // started. Our _GetWindowLayoutAsync handler requires us to be able to work
     // on our UI thread, which requires that we have a Dispatcher ready for us
@@ -1539,4 +1539,29 @@ void AppHost::_handleSendContent(const winrt::Windows::Foundation::IInspectable&
 void AppHost::_requestUpdateSettings()
 {
     _UpdateSettingsRequestedHandlers();
+}
+
+
+
+// page -> window -> us
+// The TerminalWindow was asked to close with multiple tabs open. Ensure that we are in the foreground
+void AppHost::_OnCloseRequestedWithMultipleTabsOpen(const winrt::TerminalApp::TerminalPage&, const winrt::TerminalApp::CloseRequestedWithMultipleTabsArgs& args)
+{
+    Remoting::SummonWindowBehavior summonWindowBehaviorArgs;
+    summonWindowBehaviorArgs.DropdownDuration(0);
+    summonWindowBehaviorArgs.MoveToCurrentDesktop(false);
+    summonWindowBehaviorArgs.ToMonitor(Remoting::MonitorBehavior::ToCurrent);
+    summonWindowBehaviorArgs.ToggleVisibility(false);
+    
+    // We need to wait to signal our event args until the Window has been summoned. So lets grab a deferral here.
+    // If we dont wait the Confirmation dialog will dismiss during the movement of the window.
+    auto deferral = args.GetDeferral();
+
+    // This code will run after the window has moved to signal our deferral as complete and then clean up the event_token.
+    _WindowMovedToken = _window->WindowMoved([deferral, this]() {
+        deferral.Complete();
+        _window->WindowMoved(_WindowMovedToken);
+    });
+
+    _window->SummonWindow(summonWindowBehaviorArgs);
 }

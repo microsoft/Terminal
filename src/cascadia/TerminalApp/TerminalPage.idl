@@ -56,6 +56,12 @@ namespace TerminalApp
         Boolean IsQuakeWindow();
     };
 
+    [default_interface] runtimeclass CloseRequestedWithMultipleTabsArgs
+    {
+        Windows.Foundation.Deferral GetDeferral();
+        Boolean Cancel;
+    };
+
     [default_interface] runtimeclass TerminalPage : Windows.UI.Xaml.Controls.Page, Windows.UI.Xaml.Data.INotifyPropertyChanged, IDirectKeyListener
     {
         TerminalPage(WindowProperties properties, ContentManager manager);
@@ -103,5 +109,7 @@ namespace TerminalApp
 
         event Windows.Foundation.TypedEventHandler<Object, RequestMoveContentArgs> RequestMoveContent;
         event Windows.Foundation.TypedEventHandler<Object, RequestReceiveContentArgs> RequestReceiveContent;
+        event Windows.Foundation.TypedEventHandler<TerminalPage, CloseRequestedWithMultipleTabsArgs> CloseRequestedWithMultipleTabs;
     }
+
 }
