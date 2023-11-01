@@ -51,23 +51,23 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         ::Microsoft::Console::Render::IRenderData* GetRenderData() const;
 
 #pragma region Input Methods
-        void PointerPressed(Control::MouseButtonState buttonState,
+        void PointerPressed(const uint32_t pointerId,
+                            Control::MouseButtonState buttonState,
                             const unsigned int pointerUpdateKind,
                             const uint64_t timestamp,
                             const ::Microsoft::Terminal::Core::ControlKeyStates modifiers,
                             const Core::Point pixelPosition);
         void TouchPressed(const Core::Point contactPoint);
 
-        void PointerMoved(Control::MouseButtonState buttonState,
+        void PointerMoved(const uint32_t pointerId,
+                          Control::MouseButtonState buttonState,
                           const unsigned int pointerUpdateKind,
                           const ::Microsoft::Terminal::Core::ControlKeyStates modifiers,
-                          const bool focused,
-                          const Core::Point pixelPosition,
-                          const bool pointerPressedInBounds);
-        void TouchMoved(const Core::Point newTouchPoint,
-                        const bool focused);
+                          const Core::Point pixelPosition);
+        void TouchMoved(const Core::Point newTouchPoint);
 
-        void PointerReleased(Control::MouseButtonState buttonState,
+        void PointerReleased(const uint32_t pointerId,
+                             Control::MouseButtonState buttonState,
                              const unsigned int pointerUpdateKind,
                              const ::Microsoft::Terminal::Core::ControlKeyStates modifiers,
                              const Core::Point pixelPosition);
@@ -141,6 +141,25 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         uint64_t _id;
         static std::atomic<uint64_t> _nextId;
+
+        bool _focused{ false };
+
+        // Auto scroll occurs when user, while selecting, drags cursor outside
+        // viewport. View is then scrolled to 'follow' the cursor.
+        double _autoScrollVelocity;
+        std::optional<uint32_t> _autoScrollingPointerId;
+        std::optional<Core::Point> _autoScrollingPointerPoint;
+        wil::unique_threadpool_timer _autoScrollTimer;
+        std::optional<std::chrono::high_resolution_clock::time_point> _lastAutoScrollUpdateTime;
+        bool _pointerPressedInBounds{ false };
+
+        void _tryStartAutoScroll(const uint32_t id, const Core::Point& point, const double scrollVelocity);
+        void _tryStopAutoScroll(const uint32_t pointerId);
+        static void CALLBACK _autoScrollTimerCallback(PTP_CALLBACK_INSTANCE instance, void* context, PTP_TIMER timer);
+        void _updateAutoScroll();
+        double _getAutoScrollSpeed(double cursorDistanceFromBorder) const;
+
+        void _createInteractivityTimers();
 
         unsigned int _numberOfClicks(Core::Point clickPos, Timestamp clickTime);
         void _updateSystemParameterSettings() noexcept;

@@ -232,20 +232,9 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         bool _isInternalScrollBarUpdate;
 
-        // Auto scroll occurs when user, while selecting, drags cursor outside
-        // viewport. View is then scrolled to 'follow' the cursor.
-        double _autoScrollVelocity;
-        std::optional<Windows::UI::Input::PointerPoint> _autoScrollingPointerPoint;
-        Windows::UI::Xaml::DispatcherTimer _autoScrollTimer;
-        std::optional<std::chrono::high_resolution_clock::time_point> _lastAutoScrollUpdateTime;
-        bool _pointerPressedInBounds{ false };
-
         winrt::Windows::UI::Composition::ScalarKeyFrameAnimation _bellLightAnimation{ nullptr };
         winrt::Windows::UI::Composition::ScalarKeyFrameAnimation _bellDarkAnimation{ nullptr };
         Windows::UI::Xaml::DispatcherTimer _bellLightTimer{ nullptr };
-
-        std::optional<Windows::UI::Xaml::DispatcherTimer> _cursorTimer;
-        std::optional<Windows::UI::Xaml::DispatcherTimer> _blinkTimer;
 
         winrt::Windows::UI::Xaml::Controls::SwapChainPanel::LayoutUpdated_revoker _layoutUpdatedRevoker;
         bool _showMarksInScrollbar{ false };
@@ -313,11 +302,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         winrt::fire_and_forget _HyperlinkHandler(Windows::Foundation::IInspectable sender, Control::OpenHyperlinkEventArgs e);
 
-        void _CursorTimerTick(const Windows::Foundation::IInspectable& sender, const Windows::Foundation::IInspectable& e);
-        void _BlinkTimerTick(const Windows::Foundation::IInspectable& sender, const Windows::Foundation::IInspectable& e);
         void _BellLightOff(const Windows::Foundation::IInspectable& sender, const Windows::Foundation::IInspectable& e);
-
-        void _SetEndSelectionPointAtCursor(const Windows::Foundation::Point& cursorPosition);
 
         void _SwapChainSizeChanged(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::SizeChangedEventArgs& e);
         void _SwapChainScaleChanged(const Windows::UI::Xaml::Controls::SwapChainPanel& sender, const Windows::Foundation::IInspectable& args);
@@ -330,10 +315,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         bool _CapturePointer(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
         bool _ReleasePointerCapture(const Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::Input::PointerRoutedEventArgs& e);
 
-        void _TryStartAutoScroll(const Windows::UI::Input::PointerPoint& pointerPoint, const double scrollVelocity);
-        void _TryStopAutoScroll(const uint32_t pointerId);
-        void _UpdateAutoScroll(const Windows::Foundation::IInspectable& sender, const Windows::Foundation::IInspectable& e);
-
         void _KeyHandler(const Windows::UI::Xaml::Input::KeyRoutedEventArgs& e, const bool keyDown);
         static ::Microsoft::Terminal::Core::ControlKeyStates _GetPressedModifierKeys() noexcept;
         bool _TryHandleKeyBinding(const WORD vkey, const WORD scanCode, ::Microsoft::Terminal::Core::ControlKeyStates modifiers) const;
@@ -342,8 +323,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         til::point _toControlOrigin(const til::point terminalPosition);
         const til::point _toTerminalOrigin(winrt::Windows::Foundation::Point cursorPosition);
-
-        double _GetAutoScrollSpeed(double cursorDistanceFromBorder) const;
 
         void _Search(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
 

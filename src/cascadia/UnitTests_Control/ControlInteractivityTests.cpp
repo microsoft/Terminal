@@ -309,10 +309,13 @@ namespace ControlUnitTests
 
         const til::size fontSize{ 9, 21 };
 
+        interactivity->GotFocus();
+
         Log::Comment(L"Click on the terminal");
         const til::point terminalPosition0{ 0, 0 };
         const auto cursorPosition0 = terminalPosition0 * fontSize;
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -325,12 +328,11 @@ namespace ControlUnitTests
         // move not quite a whole cell, but enough to start a selection
         const til::point terminalPosition1{ 0, 0 };
         const til::point cursorPosition1{ 6, 0 };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -338,18 +340,18 @@ namespace ControlUnitTests
         Log::Comment(L"Drag the mouse down a whole row");
         const til::point terminalPosition2{ 1, 1 };
         const auto cursorPosition2 = terminalPosition2 * fontSize;
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition2.to_core_point(),
-                                    true);
+                                    cursorPosition2.to_core_point());
         Log::Comment(L"Verify that there's now two selections (one on each row)");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(2u, core->_terminal->GetSelectionRects().size());
 
         Log::Comment(L"Release the mouse");
-        interactivity->PointerReleased(noMouseDown,
+        interactivity->PointerReleased(0,
+                                       noMouseDown,
                                        WM_LBUTTONUP, //pointerUpdateKind
                                        modifiers,
                                        cursorPosition2.to_core_point());
@@ -360,7 +362,8 @@ namespace ControlUnitTests
         Log::Comment(L"click outside the current selection");
         const til::point terminalPosition3{ 2, 2 };
         const auto cursorPosition3 = terminalPosition3 * fontSize;
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -372,12 +375,11 @@ namespace ControlUnitTests
         Log::Comment(L"Drag the mouse");
         const til::point terminalPosition4{ 3, 2 };
         const auto cursorPosition4 = terminalPosition4 * fontSize;
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition4.to_core_point(),
-                                    true);
+                                    cursorPosition4.to_core_point());
         Log::Comment(L"Verify that there's now one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -409,10 +411,13 @@ namespace ControlUnitTests
 
         const til::size fontSize{ 9, 21 };
 
+        interactivity->GotFocus();
+
         Log::Comment(L"Click on the terminal");
         const til::point terminalPosition0{ 5, 5 };
         const auto cursorPosition0{ terminalPosition0 * fontSize };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -427,12 +432,11 @@ namespace ControlUnitTests
         Log::Comment(L"Drag the mouse just a little");
         // move not quite a whole cell, but enough to start a selection
         const auto cursorPosition1{ cursorPosition0 + til::point{ 6, 0 } };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -559,9 +563,12 @@ namespace ControlUnitTests
 
         const til::size fontSize{ 9, 21 };
 
+        interactivity->GotFocus();
+
         Log::Comment(L"Click on the terminal");
         const til::point cursorPosition0{ 6, 0 };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -575,12 +582,11 @@ namespace ControlUnitTests
 
         Log::Comment(L"Drag the mouse a lot. This simulates dragging the mouse real fast.");
         const til::point cursorPosition1{ 6 + fontSize.width * 2, 0 };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -603,10 +609,13 @@ namespace ControlUnitTests
         const auto leftMouseDown{ Control::MouseButtonState::IsLeftButtonDown };
         const Control::MouseButtonState noMouseDown{};
 
+        interactivity->GotFocus();
+
         const til::size fontSize{ 9, 21 };
         Log::Comment(L"Click on the terminal");
         const til::point cursorPosition0{ 6, 0 };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -620,12 +629,11 @@ namespace ControlUnitTests
 
         Log::Comment(L"Drag the mouse a lot. This simulates dragging the mouse real fast.");
         const til::point cursorPosition1{ 6 + fontSize.width * 2, 0 };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -636,7 +644,8 @@ namespace ControlUnitTests
         til::point expectedEnd{ 2, 0 };
         VERIFY_ARE_EQUAL(expectedEnd, core->_terminal->GetSelectionEnd());
 
-        interactivity->PointerReleased(noMouseDown,
+        interactivity->PointerReleased(0,
+                                       noMouseDown,
                                        WM_LBUTTONUP,
                                        modifiers,
                                        cursorPosition1.to_core_point());
@@ -646,12 +655,11 @@ namespace ControlUnitTests
 
         Log::Comment(L"Simulate dragging the mouse into the control, without first clicking into the control");
         const til::point cursorPosition2{ fontSize.width * 10, 0 };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition2.to_core_point(),
-                                    false);
+                                    cursorPosition2.to_core_point());
 
         Log::Comment(L"The selection should be unchanged.");
         VERIFY_ARE_EQUAL(expectedAnchor, core->_terminal->GetSelectionAnchor());
@@ -677,6 +685,8 @@ namespace ControlUnitTests
         auto expectedTop = 0;
         auto expectedViewHeight = 20;
         auto expectedBufferHeight = 20;
+
+        interactivity->GotFocus();
 
         auto scrollChangedHandler = [&](auto&&, const Control::ScrollPositionChangedArgs& args) mutable {
             VERIFY_ARE_EQUAL(expectedTop, args.ViewTop());
@@ -724,7 +734,8 @@ namespace ControlUnitTests
         Log::Comment(L"Click on the terminal");
         const til::point terminalPosition0{ 4, 4 };
         const auto cursorPosition0 = terminalPosition0 * fontSize;
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -737,12 +748,11 @@ namespace ControlUnitTests
         // move the mouse as if to make a selection
         const til::point terminalPosition1{ 10, 4 };
         const auto cursorPosition1 = terminalPosition1 * fontSize;
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's still no selection");
         VERIFY_IS_FALSE(core->HasSelection());
     }
@@ -772,10 +782,13 @@ namespace ControlUnitTests
 
         const til::size fontSize{ 9, 21 };
 
+        interactivity->GotFocus();
+
         Log::Comment(L"Click on the terminal");
         const til::point terminalPosition0{ 5, 5 };
         const auto cursorPosition0{ terminalPosition0 * fontSize };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -790,12 +803,11 @@ namespace ControlUnitTests
         Log::Comment(L"Drag the mouse just a little");
         // move not quite a whole cell, but enough to start a selection
         const auto cursorPosition1{ cursorPosition0 + til::point{ 6, 0 } };
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         Log::Comment(L"Verify that there's one selection");
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
@@ -850,12 +862,11 @@ namespace ControlUnitTests
         // character in the buffer (if, albeit in a new location).
         //
         // This helps test GH #14462, a regression from #10749.
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition0.to_core_point(),
-                                    true);
+                                    cursorPosition0.to_core_point());
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
         {
@@ -875,12 +886,11 @@ namespace ControlUnitTests
         conn->WriteInput(L"Foo\r\n");
         expectedAnchor.y -= 1;
         VERIFY_ARE_EQUAL(scrollbackLength - 3, core->_terminal->GetScrollOffset());
-        interactivity->PointerMoved(leftMouseDown,
+        interactivity->PointerMoved(0,
+                                    leftMouseDown,
                                     WM_LBUTTONDOWN, //pointerUpdateKind
                                     modifiers,
-                                    true, // focused,
-                                    cursorPosition1.to_core_point(),
-                                    true);
+                                    cursorPosition1.to_core_point());
         VERIFY_IS_TRUE(core->HasSelection());
         VERIFY_ARE_EQUAL(1u, core->_terminal->GetSelectionRects().size());
         {
@@ -929,7 +939,8 @@ namespace ControlUnitTests
         const til::size fontSize{ 9, 21 };
         const til::point terminalPosition0{ 5, 5 };
         const auto cursorPosition0{ terminalPosition0 * fontSize };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -978,7 +989,8 @@ namespace ControlUnitTests
         const til::size fontSize{ 9, 21 };
         const til::point terminalPosition0{ 5, 5 };
         const auto cursorPosition0{ terminalPosition0 * fontSize };
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -994,7 +1006,8 @@ namespace ControlUnitTests
         // The viewport is only 30 wide, so clamping 35 to the buffer size gets
         // us 29, which converted is (32 + 29 + 1) = 62 = '>'
         expectedOutput.push_back(L"\x1b[M >&");
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -1009,7 +1022,8 @@ namespace ControlUnitTests
         // straight up won't be sent to the terminal.
 
         expectedOutput.push_back(L"sentinel"); // Clearly, it won't be this string
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -1026,7 +1040,8 @@ namespace ControlUnitTests
         VERIFY_ARE_EQUAL(0, core->ScrollOffset());
         Log::Comment(L" --- Click on a spot that's still outside the buffer ---");
         expectedOutput.push_back(L"\x1b[M >&");
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
@@ -1040,7 +1055,8 @@ namespace ControlUnitTests
         Log::Comment(L" --- Click on a spot that's NOW INSIDE the buffer ---");
         // (32 + 35 + 1) = 68 = 'D'
         expectedOutput.push_back(L"\x1b[M D&");
-        interactivity->PointerPressed(leftMouseDown,
+        interactivity->PointerPressed(0,
+                                      leftMouseDown,
                                       WM_LBUTTONDOWN, //pointerUpdateKind
                                       0, // timestamp
                                       modifiers,
