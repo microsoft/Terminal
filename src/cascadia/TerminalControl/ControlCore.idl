@@ -4,6 +4,7 @@
 import "ICoreState.idl";
 import "IControlSettings.idl";
 import "EventArgs.idl";
+import "FuzzySearchTextSegment.idl";
 
 namespace Microsoft.Terminal.Control
 {
@@ -159,6 +160,16 @@ namespace Microsoft.Terminal.Control
         Boolean ShouldShowSelectCommand();
         Boolean ShouldShowSelectOutput();
 
+        FuzzySearchResult FuzzySearch(String text);
+        Boolean InitializeFuzzySearch(Single actualWidth,
+                                      Single actualHeight,
+                                      Single compositionScale);
+        void FuzzySearchSelectionChanged(Int32 row);
+        void FuzzySearchPreviewSizeChanged(Single width, Single height);
+        void EnterFuzzySearchMode();
+        void ExitFuzzySearchMode();
+        void SelectChar(Int32 row, Int32 col);
+
         // These events are called from some background thread
         event Windows.Foundation.TypedEventHandler<Object, CopyToClipboardEventArgs> CopyToClipboard;
         event Windows.Foundation.TypedEventHandler<Object, TitleChangedEventArgs> TitleChanged;
@@ -185,6 +196,7 @@ namespace Microsoft.Terminal.Control
         event Windows.Foundation.TypedEventHandler<Object, OpenHyperlinkEventArgs> OpenHyperlink;
         event Windows.Foundation.TypedEventHandler<Object, Object> CloseTerminalRequested;
         event Windows.Foundation.TypedEventHandler<Object, Object> RestartTerminalRequested;
+        event Windows.Foundation.TypedEventHandler<Object, Object> FuzzySearchSwapChainChanged;
 
         event Windows.Foundation.TypedEventHandler<Object, Object> Attached;
 

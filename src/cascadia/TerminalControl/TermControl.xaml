@@ -1358,6 +1358,20 @@
                 </StackPanel>
             </Border>
         </Grid>
+        <local:FuzzySearchBoxControl x:Name="FuzzySearchBox"
+                                     Background="{Binding BackgroundBrush, Mode=OneWay}"
+                                     Grid.Row="0"
+                                     Margin="25,25,25,25"
+                                     Search="_FuzzySearch"
+                                     VerticalAlignment="Stretch"
+                                     HorizontalAlignment="Stretch"
+                                     Closed="_CloseFuzzySearchBoxControl"
+                                     Visibility="Collapsed"
+                                     SelectionChanged="FuzzySearch_SelectionChanged"
+                                     OnReturn="FuzzySearch_OnSelection"
+                                     PreviewSwapChainPanelSizeChanged="_FuzzySearchPreviewSwapChainSizeChanged"
+                                     ItemsSource="{x:Bind FuzzySearchResults}"/>
+
 
     </Grid>
 
