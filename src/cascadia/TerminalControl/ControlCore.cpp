@@ -1918,14 +1918,25 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         auto rowResults = std::vector<RowResult>();
         auto rowCount = renderData->GetTextBuffer().GetLastNonSpaceCharacter().y + 1;
+        int numberOfNonSpaceLines = 0;
         int minScore = 0;
 
         for (int rowNumber = 0; rowNumber < rowCount; rowNumber++)
         {
             std::wstring_view rowText = renderData->GetTextBuffer().GetRowByOffset(rowNumber).GetText();
 
-            if (rowText.size() > 0)
+            auto findLastNonBlankIndex = [](const std::wstring& str) {
+                auto it = std::find_if(str.rbegin(), str.rend(), [](wchar_t ch) {
+                    return !std::iswspace(ch);
+                });
+                return it == str.rend() ? -1 : std::distance(it, str.rend()) - 1;
+            };
+
+            auto length = findLastNonBlankIndex(std::wstring(rowText));
+
+            if (length > 0)
             {
+                numberOfNonSpaceLines++;
                 std::wstring rowFullText = rowText.data();
 
                 int bufferSize = WideCharToMultiByte(CP_UTF8, 0, rowText.data(), -1, nullptr, 0, nullptr, nullptr);
@@ -1938,15 +1949,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 if (rowScore > minScore)
                 {
                     fzf_position_t* pos = fzf_get_positions(asciiRowTextCStr, pattern, slab);
-
-                    auto findLastNonBlankIndex = [](const std::string& str) {
-                        auto it = std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
-                            return !std::isspace(ch);
-                        });
-                        return std::distance(it, str.rend()) - 1;
-                    };
-
-                    auto length = findLastNonBlankIndex(asciiRowText);
 
                     auto rowResult = RowResult{};
                     rowResult.rowFullText = rowFullText;
@@ -2061,7 +2063,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             fzf_free_positions(p.pos);
         }
 
-        auto fuzzySearchResult = winrt::make<FuzzySearchResult>(searchResults, rowCount, searchResults.Size());
+        auto fuzzySearchResult = winrt::make<FuzzySearchResult>(searchResults, numberOfNonSpaceLines, searchResults.Size());
         return fuzzySearchResult;
     }
 
