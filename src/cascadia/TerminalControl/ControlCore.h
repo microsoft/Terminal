@@ -25,6 +25,7 @@
 #include "../buffer/out/search.h"
 #include "../buffer/out/TextColor.h"
 #include "../../cascadia/TerminalCore/FuzzySearchRenderData.hpp"
+#include "fzf/fzf.h"
 
 namespace ControlUnitTests
 {
@@ -392,6 +393,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         winrt::handle _fuzzySearchLastSwapChainHandle{ nullptr };
         void _sizeFuzzySearchPreview();
         bool _fuzzySearchActive = false;
+        fzf_slab_t* _fzfSlab;
 
 #pragma endregion
 

@@ -91,6 +91,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         _terminal = std::make_shared<::Microsoft::Terminal::Core::Terminal>();
         const auto lock = _terminal->LockForWriting();
 
+        _fzfSlab = fzf_make_default_slab();
+
         _setupDispatcherAndCallbacks();
 
         Connection(connection);
@@ -385,6 +387,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     {
         Close();
 
+        fzf_free_slab(_fzfSlab);
         if (_renderer)
         {
             _renderer->TriggerTeardown();
@@ -1905,8 +1908,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             return winrt::make<FuzzySearchResult>(searchResults, 0, 0);
         }
 
-        fzf_slab_t* slab = fzf_make_default_slab();
-
         std::wstring searchTextCStr = text.c_str();
         int sizeOfSearchTextCStr = WideCharToMultiByte(CP_UTF8, 0, searchTextCStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
         std::string asciiSearchString(sizeOfSearchTextCStr, 0);
@@ -1945,10 +1946,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 asciiRowText.pop_back();
                 char* asciiRowTextCStr = const_cast<char*>(asciiRowText.c_str());
 
-                int rowScore = fzf_get_score(asciiRowTextCStr, pattern, slab);
+                int rowScore = fzf_get_score(asciiRowTextCStr, pattern, _fzfSlab);
                 if (rowScore > minScore)
                 {
-                    fzf_position_t* pos = fzf_get_positions(asciiRowTextCStr, pattern, slab);
+                    fzf_position_t* pos = fzf_get_positions(asciiRowTextCStr, pattern, _fzfSlab);
 
                     auto rowResult = RowResult{};
                     rowResult.rowFullText = rowFullText;
@@ -1978,7 +1979,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         }
 
         fzf_free_pattern(pattern);
-        fzf_free_slab(slab);
 
         for (auto p : rowResults)
         {
