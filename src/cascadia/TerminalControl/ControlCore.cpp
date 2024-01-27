@@ -1884,6 +1884,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
     Control::FuzzySearchResult ControlCore::FuzzySearch(const winrt::hstring& text)
     {
+        //temporary structure to hold fzf results in an attempt to minimize the number ascii to
+        //unicode position conversions and conversions from matching positions to text runs
         struct RowResult
         {
             std::wstring rowFullText;
@@ -1908,6 +1910,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             return winrt::make<FuzzySearchResult>(searchResults, 0, 0);
         }
 
+        //Convert search string to ascii from unicode
         std::wstring searchTextCStr = text.c_str();
         int sizeOfSearchTextCStr = WideCharToMultiByte(CP_UTF8, 0, searchTextCStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
         std::string asciiSearchString(sizeOfSearchTextCStr, 0);
@@ -1933,6 +1936,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 return it == str.rend() ? -1 : std::distance(it, str.rend()) - 1;
             };
 
+            //Is there a better way to do this?  Trying to not send blank rows to fzf and have a accurate count
+            //of rows searched
             auto length = findLastNonBlankIndex(std::wstring(rowText));
 
             if (length > 0)
@@ -1940,6 +1945,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 numberOfNonSpaceLines++;
                 std::wstring rowFullText = rowText.data();
 
+                //Convert row text from unicode to ascii
                 int bufferSize = WideCharToMultiByte(CP_UTF8, 0, rowText.data(), -1, nullptr, 0, nullptr, nullptr);
                 std::string asciiRowText(bufferSize, 0);
                 WideCharToMultiByte(CP_UTF8, 0, rowText.data(), -1, &asciiRowText[0], bufferSize, nullptr, nullptr);
@@ -1986,6 +1992,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 return a > b;
             });
 
+            //Convert matching positions from ascii to unicode
             std::vector<size_t> wideCharPositions;
             size_t wideCharIndex = 0;
             size_t asciiCharIndex = 0;
@@ -2009,6 +2016,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             bool isCurrentRunHighlighted = false;
             size_t highlightIndex = 0;
 
+            //Convert matching positions to text runs
             for (uint32_t i = 0; i < p.rowFullText.length() - 1; ++i)
             {
                 if (highlightIndex < wideCharPositions.size() && i == wideCharPositions[highlightIndex])
@@ -2049,13 +2057,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                 auto textSegment = winrt::make<FuzzySearchTextSegment>(textSegmentHstr, false);
                 runs.Append(textSegment);
             }
-
-            auto findLastNonBlankIndex = [](const std::string& str) {
-                auto it = std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
-                    return !std::isspace(ch);
-                });
-                return std::distance(it, str.rend()) - 1;
-            };
 
             auto line = winrt::make<FuzzySearchTextLine>(runs, p.score, p.rowNumber, static_cast<int32_t>(p.pos->data[p.pos->size - 1]), static_cast<int32_t>(p.length));
 
