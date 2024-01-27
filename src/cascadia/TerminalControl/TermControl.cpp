@@ -502,9 +502,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
     void TermControl::FuzzySearch_OnSelection(Control::FuzzySearchBoxControl const& /*sender*/, winrt::Microsoft::Terminal::Control::FuzzySearchTextLine const& args)
     {
-        _fuzzySearchBox->Visibility(Visibility::Collapsed);
+        _hideFuzzySearchControl();
         _core.SelectChar(args.Row(), args.FirstPosition());
-        _core.ExitFuzzySearchMode();
     }
 
     void TermControl::FuzzySearch_SelectionChanged(Control::FuzzySearchBoxControl const& /*sender*/, winrt::Microsoft::Terminal::Control::FuzzySearchTextLine const& args)
@@ -521,9 +520,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     void TermControl::_CloseFuzzySearchBoxControl(const winrt::Windows::Foundation::IInspectable& /*sender*/,
                                              const RoutedEventArgs& /*args*/)
     {
-        _fuzzySearchBox->Visibility(Visibility::Collapsed);
+        _hideFuzzySearchControl();
         this->Focus(FocusState::Programmatic);
-        _core.ExitFuzzySearchMode();
     }
 
     void TermControl::FuzzySearchRenderEngineSwapChainChanged(IInspectable /*sender*/, IInspectable args)
@@ -531,6 +529,14 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         // This event comes in on the UI thread
         HANDLE h = reinterpret_cast<HANDLE>(winrt::unbox_value<uint64_t>(args));
         _AttachDxgiFuzzySearchSwapChainToXaml(h);
+    }
+
+    void TermControl::_hideFuzzySearchControl()
+    {
+        _fuzzySearchResults.Clear();
+        _fuzzySearchBox->Visibility(Visibility::Collapsed);
+        this->Focus(FocusState::Programmatic);
+        _core.ExitFuzzySearchMode();
     }
 
     void TermControl::_AttachDxgiFuzzySearchSwapChainToXaml(HANDLE swapChainHandle)

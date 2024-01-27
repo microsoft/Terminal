@@ -62,8 +62,6 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         void FuzzySearch_SelectionChanged(Control::FuzzySearchBoxControl const& sender, winrt::Microsoft::Terminal::Control::FuzzySearchTextLine const& args);
         void FuzzySearch_OnSelection(Control::FuzzySearchBoxControl const& sender, winrt::Microsoft::Terminal::Control::FuzzySearchTextLine const& args);
         void FuzzySearchRenderEngineSwapChainChanged(IInspectable sender, IInspectable args);
-        void _AttachDxgiFuzzySearchSwapChainToXaml(HANDLE swapChainHandle);
-        void _FuzzySearchPreviewSwapChainSizeChanged(const Windows::Foundation::IInspectable& /*sender*/, const Windows::UI::Xaml::SizeChangedEventArgs& e);
 
 #pragma region ICoreState
         const uint64_t TaskbarState() const noexcept;
@@ -357,11 +355,15 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         double _GetAutoScrollSpeed(double cursorDistanceFromBorder) const;
 
         void _Search(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
-        void _FuzzySearch(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
 
         void _SearchChanged(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
         void _CloseSearchBoxControl(const winrt::Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::RoutedEventArgs& args);
+
+        void _FuzzySearch(const winrt::hstring& text, const bool goForward, const bool caseSensitive);
         void _CloseFuzzySearchBoxControl(const winrt::Windows::Foundation::IInspectable& sender, const Windows::UI::Xaml::RoutedEventArgs& args);
+        void _AttachDxgiFuzzySearchSwapChainToXaml(HANDLE swapChainHandle);
+        void _FuzzySearchPreviewSwapChainSizeChanged(const Windows::Foundation::IInspectable& /*sender*/, const Windows::UI::Xaml::SizeChangedEventArgs& e);
+        void _hideFuzzySearchControl();
 
         // TSFInputControl Handlers
         void _CompositionCompleted(winrt::hstring text);
