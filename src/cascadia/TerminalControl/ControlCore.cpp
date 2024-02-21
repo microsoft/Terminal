@@ -22,6 +22,9 @@
 #include "ControlCore.g.cpp"
 #include "SelectionColor.g.cpp"
 
+#include "FuzzySearchTextSegment.h"
+#include "fzf/fzf.h"
+
 using namespace ::Microsoft::Console::Types;
 using namespace ::Microsoft::Console::VirtualTerminal;
 using namespace ::Microsoft::Terminal::Core;
@@ -88,6 +91,8 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         _terminal = std::make_shared<::Microsoft::Terminal::Core::Terminal>();
         const auto lock = _terminal->LockForWriting();
 
+        _fzfSlab = fzf_make_default_slab();
+
         _setupDispatcherAndCallbacks();
 
         Connection(connection);
@@ -148,9 +153,173 @@ namespace winrt::Microsoft::Terminal::Control::implementation
             _renderer->SetRendererEnteredErrorStateCallback([this]() { _RendererEnteredErrorStateHandlers(nullptr, nullptr); });
 
             THROW_IF_FAILED(localPointerToThread->Initialize(_renderer.get()));
+
+            auto fuzzySearchRenderThread = std::make_unique<::Microsoft::Console::Render::RenderThread>();
+            auto* const localPointerToFuzzySearchThread = fuzzySearchRenderThread.get();
+
+            _fuzzySearchRenderData = std::make_unique<FuzzySearchRenderData>(_terminal.get());
+            _fuzzySearchRenderer = std::make_unique<::Microsoft::Console::Render::Renderer>(renderSettings, _fuzzySearchRenderData.get(), nullptr, 0, std::move(fuzzySearchRenderThread));
+            _fuzzySearchRenderData->SetRenderer(_fuzzySearchRenderer.get());
+
+            _fuzzySearchRenderer->SetBackgroundColorChangedCallback([this]() { _rendererBackgroundColorChanged(); });
+            _fuzzySearchRenderer->SetFrameColorChangedCallback([this]() { _rendererTabColorChanged(); });
+            _fuzzySearchRenderer->SetRendererEnteredErrorStateCallback([this]() { _RendererEnteredErrorStateHandlers(nullptr, nullptr); });
+
+            THROW_IF_FAILED(localPointerToFuzzySearchThread->Initialize(_fuzzySearchRenderer.get()));
         }
 
         UpdateSettings(settings, unfocusedAppearance);
+    }
+
+    bool ControlCore::InitializeFuzzySearch(const float actualWidth,
+                                            const float actualHeight,
+                                            const float compositionScale)
+    {
+        assert(_settings);
+
+        _fuzzySearchPanelWidth = actualWidth;
+        _fuzzySearchPanelHeight = actualHeight;
+        _fuzzySearchCompositionScale = compositionScale;
+
+        { // scope for terminalLock
+            const auto lock = _terminal->LockForWriting();
+
+            const auto windowWidth = actualWidth * compositionScale;
+            const auto windowHeight = actualHeight * compositionScale;
+
+            if (windowWidth == 0 || windowHeight == 0)
+            {
+                return false;
+            }
+
+            if (_settings->UseAtlasEngine())
+            {
+                _fuzzySearchRenderEngine = std::make_unique<::Microsoft::Console::Render::AtlasEngine>();
+            }
+            else
+            {
+                _fuzzySearchRenderEngine = std::make_unique<::Microsoft::Console::Render::DxEngine>();
+            }
+
+            _fuzzySearchRenderer->AddRenderEngine(_fuzzySearchRenderEngine.get());
+
+            const til::size windowSize{ til::math::rounding, windowWidth, windowHeight };
+
+            // First set up the dx engine with the window size in pixels.
+            // Then, using the font, get the number of characters that can fit.
+            // Resize our terminal connection to match that size, and initialize the terminal with that size.
+            const auto viewInPixels = Viewport::FromDimensions({ 0, 0 }, windowSize);
+            LOG_IF_FAILED(_fuzzySearchRenderEngine->SetWindowSize({ viewInPixels.Width(), viewInPixels.Height() }));
+
+            // Update DxEngine's SelectionBackground
+            _fuzzySearchRenderEngine->SetSelectionBackground(til::color{ _settings->SelectionBackground() });
+
+            _fuzzySearchRenderEngine->SetWarningCallback(std::bind(&ControlCore::_rendererWarning, this, std::placeholders::_1));
+
+            // Tell the render engine to notify us when the swap chain changes.
+            // We do this after we initially set the swapchain so as to avoid
+            // unnecessary callbacks (and locking problems)
+            _fuzzySearchRenderEngine->SetCallback([this](HANDLE handle) {
+                _fuzzySearchRenderEngineSwapChainChanged(handle);
+            });
+
+            _fuzzySearchRenderEngine->SetRetroTerminalEffect(_settings->RetroTerminalEffect());
+            _fuzzySearchRenderEngine->SetPixelShaderPath(_settings->PixelShaderPath());
+            _fuzzySearchRenderEngine->SetForceFullRepaintRendering(_settings->ForceFullRepaintRendering());
+            _fuzzySearchRenderEngine->SetSoftwareRendering(_settings->SoftwareRendering());
+
+            // GH#5098: Inform the engine of the opacity of the default text background.
+            // GH#11315: Always do this, even if they don't have acrylic on.
+            _fuzzySearchRenderEngine->EnableTransparentBackground(_isBackgroundTransparent());
+
+            THROW_IF_FAILED(_fuzzySearchRenderEngine->Enable());
+
+            const auto newDpi = static_cast<int>(lrint(_compositionScale * USER_DEFAULT_SCREEN_DPI));
+
+            std::unordered_map<std::wstring_view, uint32_t> featureMap;
+            if (const auto fontFeatures = _settings->FontFeatures())
+            {
+                featureMap.reserve(fontFeatures.Size());
+
+                for (const auto& [tag, param] : fontFeatures)
+                {
+                    featureMap.emplace(tag, param);
+                }
+            }
+            std::unordered_map<std::wstring_view, float> axesMap;
+            if (const auto fontAxes = _settings->FontAxes())
+            {
+                axesMap.reserve(fontAxes.Size());
+
+                for (const auto& [axis, value] : fontAxes)
+                {
+                    axesMap.emplace(axis, value);
+                }
+            }
+
+            // TODO: MSFT:20895307 If the font doesn't exist, this doesn't
+            //      actually fail. We need a way to gracefully fallback.
+            LOG_IF_FAILED(_fuzzySearchRenderEngine->UpdateDpi(newDpi));
+            LOG_IF_FAILED(_fuzzySearchRenderEngine->UpdateFont(_desiredFont, _actualFont, featureMap, axesMap));
+        } // scope for TerminalLock
+
+        return true;
+    }
+
+    void ControlCore::EnterFuzzySearchMode()
+    {
+        _fuzzySearchActive = true;
+        _sizeFuzzySearchPreview();
+    }
+
+    void ControlCore::ExitFuzzySearchMode()
+    {
+        _fuzzySearchActive = false;
+    }
+
+    void ControlCore::SelectChar(int32_t row, int32_t col)
+    {
+        const auto lock = _terminal->LockForWriting();
+        _terminal->SelectNewRegion(til::point{ col, row }, til::point{ col, row });
+        if (_terminal->SelectionMode() != ::Terminal::SelectionInteractionMode::Mark)
+        {
+            _terminal->ToggleMarkMode();
+        }
+        else
+        {
+            _updateSelectionUI();
+        }
+        _renderer->TriggerSelection();
+    }
+
+    winrt::fire_and_forget ControlCore::_fuzzySearchRenderEngineSwapChainChanged(const HANDLE sourceHandle)
+    {
+        // `sourceHandle` is a weak ref to a HANDLE that's ultimately owned by the
+        // render engine's own unique_handle. We'll add another ref to it here.
+        // This will make sure that we always have a valid HANDLE to give to
+        // callers of our own SwapChainHandle method, even if the renderer is
+        // currently in the process of discarding this value and creating a new
+        // one. Callers should have already set up the SwapChainChanged
+        // callback, so this all works out.
+
+        winrt::handle duplicatedHandle;
+        const auto processHandle = GetCurrentProcess();
+        THROW_IF_WIN32_BOOL_FALSE(DuplicateHandle(processHandle, sourceHandle, processHandle, duplicatedHandle.put(), 0, FALSE, DUPLICATE_SAME_ACCESS));
+
+        const auto weakThis{ get_weak() };
+
+        // Concurrent read of _dispatcher is safe, because Detach() calls WaitForPaintCompletionAndDisable()
+        // which blocks until this call returns. _dispatcher will only be changed afterwards.
+        co_await wil::resume_foreground(_dispatcher);
+
+        if (auto core{ weakThis.get() })
+        {
+            // `this` is safe to use now
+
+            _fuzzySearchLastSwapChainHandle = std::move(duplicatedHandle);
+            // Now bubble the event up to the control.
+            _FuzzySearchSwapChainChangedHandlers(*this, winrt::box_value<uint64_t>(reinterpret_cast<uint64_t>(_fuzzySearchLastSwapChainHandle.get())));
+        }
     }
 
     void ControlCore::_setupDispatcherAndCallbacks()
@@ -218,6 +387,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
     {
         Close();
 
+        fzf_free_slab(_fzfSlab);
         if (_renderer)
         {
             _renderer->TriggerTeardown();
@@ -1136,6 +1306,10 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                                   const float height)
     {
         SizeOrScaleChanged(width, height, _compositionScale);
+        if (_fuzzySearchActive)
+        {
+            _sizeFuzzySearchPreview();
+        }
     }
 
     void ControlCore::ScaleChanged(const float scale)
@@ -1690,6 +1864,240 @@ namespace winrt::Microsoft::Terminal::Control::implementation
 
         return _cachedSearchResultRows;
     }
+
+    Control::FuzzySearchResult ControlCore::FuzzySearch(const winrt::hstring& text)
+    {
+        //temporary structure to hold fzf results in an attempt to minimize the number ascii to
+        //unicode position conversions and conversions from matching positions to text runs
+        struct RowResult
+        {
+            std::wstring rowFullText;
+            std::string asciiRowText;
+            fzf_position_t* pos;
+            int score;
+            int rowNumber;
+            long long length;
+        };
+
+        const auto lock = _terminal->LockForWriting();
+
+        auto searchResults = winrt::single_threaded_observable_vector<winrt::Microsoft::Terminal::Control::FuzzySearchTextLine>();
+        auto renderData = this->GetRenderData();
+
+        auto searchTextNotBlank = std::any_of(text.begin(), text.end(), [](wchar_t ch) {
+            return !std::iswspace(ch);
+        });
+
+        if (!searchTextNotBlank)
+        {
+            return winrt::make<FuzzySearchResult>(searchResults, 0, 0);
+        }
+
+        //Convert search string to ascii from unicode
+        std::wstring searchTextCStr = text.c_str();
+        int sizeOfSearchTextCStr = WideCharToMultiByte(CP_UTF8, 0, searchTextCStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string asciiSearchString(sizeOfSearchTextCStr, 0);
+        WideCharToMultiByte(CP_UTF8, 0, searchTextCStr.c_str(), -1, &asciiSearchString[0], sizeOfSearchTextCStr, nullptr, nullptr);
+        asciiSearchString.pop_back();
+        char* asciiSearchStringCStr = const_cast<char*>(asciiSearchString.c_str());
+
+        fzf_pattern_t* pattern = fzf_parse_pattern(CaseSmart, false, asciiSearchStringCStr, true);
+
+        auto rowResults = std::vector<RowResult>();
+        auto rowCount = renderData->GetTextBuffer().GetLastNonSpaceCharacter().y + 1;
+        int numberOfNonSpaceLines = 0;
+        int minScore = 0;
+
+        for (int rowNumber = 0; rowNumber < rowCount; rowNumber++)
+        {
+            std::wstring_view rowText = renderData->GetTextBuffer().GetRowByOffset(rowNumber).GetText();
+
+            auto findLastNonBlankIndex = [](const std::wstring& str) {
+                auto it = std::find_if(str.rbegin(), str.rend(), [](wchar_t ch) {
+                    return !std::iswspace(ch);
+                });
+                return it == str.rend() ? -1 : std::distance(it, str.rend()) - 1;
+            };
+
+            //Is there a better way to do this?  Trying to not send blank rows to fzf and have a accurate count
+            //of rows searched
+            auto length = findLastNonBlankIndex(std::wstring(rowText));
+
+            if (length > 0)
+            {
+                numberOfNonSpaceLines++;
+                std::wstring rowFullText = rowText.data();
+
+                //Convert row text from unicode to ascii
+                int bufferSize = WideCharToMultiByte(CP_UTF8, 0, rowText.data(), -1, nullptr, 0, nullptr, nullptr);
+                std::string asciiRowText(bufferSize, 0);
+                WideCharToMultiByte(CP_UTF8, 0, rowText.data(), -1, &asciiRowText[0], bufferSize, nullptr, nullptr);
+                asciiRowText.pop_back();
+                char* asciiRowTextCStr = const_cast<char*>(asciiRowText.c_str());
+
+                int rowScore = fzf_get_score(asciiRowTextCStr, pattern, _fzfSlab);
+                if (rowScore > minScore)
+                {
+                    fzf_position_t* pos = fzf_get_positions(asciiRowTextCStr, pattern, _fzfSlab);
+
+                    auto rowResult = RowResult{};
+                    rowResult.rowFullText = rowFullText;
+                    rowResult.asciiRowText = asciiRowText;
+                    rowResult.pos = pos;
+                    rowResult.rowNumber = rowNumber;
+                    rowResult.score = rowScore;
+                    rowResult.length = length;
+                    rowResults.push_back(rowResult);
+
+                    std::sort(rowResults.begin(), rowResults.end(), [](const auto& a, const auto& b) {
+                        if (a.score != b.score)
+                        {
+                            return a.score > b.score;
+                        }
+                        return a.length < b.length;
+                    });
+
+                    if (rowResults.size() > 100)
+                    {
+                        fzf_free_positions(rowResults[100].pos);
+                        rowResults.pop_back();
+                        minScore = rowResults[99].score;
+                    }
+                }
+            }
+        }
+
+        fzf_free_pattern(pattern);
+
+        for (auto p : rowResults)
+        {
+            std::sort(p.pos->data, p.pos->data + p.pos->size, [](uint32_t a, uint32_t b) {
+                return a > b;
+            });
+
+            //Convert matching positions from ascii to unicode
+            std::vector<size_t> wideCharPositions;
+            size_t wideCharIndex = 0;
+            size_t asciiCharIndex = 0;
+            while (wideCharIndex < p.rowFullText.length() && asciiCharIndex < p.asciiRowText.length())
+            {
+                if (std::find(p.pos->data, p.pos->data + p.pos->size, asciiCharIndex) != p.pos->data + p.pos->size)
+                {
+                    wideCharPositions.push_back(wideCharIndex);
+                }
+
+                wchar_t wideChar = p.rowFullText[wideCharIndex];
+
+                char utf8Char[5];
+                size_t length = WideCharToMultiByte(CP_UTF8, 0, &wideChar, 1, utf8Char, 5, nullptr, nullptr);
+                wideCharIndex++;
+                asciiCharIndex += length;
+            }
+
+            auto runs = winrt::single_threaded_observable_vector<winrt::Microsoft::Terminal::Control::FuzzySearchTextSegment>();
+            std::wstring currentRun;
+            bool isCurrentRunHighlighted = false;
+            size_t highlightIndex = 0;
+
+            //Convert matching positions to text runs
+            for (uint32_t i = 0; i < p.rowFullText.length() - 1; ++i)
+            {
+                if (highlightIndex < wideCharPositions.size() && i == wideCharPositions[highlightIndex])
+                {
+                    if (!isCurrentRunHighlighted)
+                    {
+                        if (!currentRun.empty())
+                        {
+                            auto textSegmentHstr = winrt::hstring(currentRun);
+                            auto textSegment = winrt::make<FuzzySearchTextSegment>(textSegmentHstr, false);
+                            runs.Append(textSegment);
+                            currentRun.clear();
+                        }
+                        isCurrentRunHighlighted = true;
+                    }
+                    highlightIndex++;
+                }
+                else
+                {
+                    if (isCurrentRunHighlighted)
+                    {
+                        if (!currentRun.empty())
+                        {
+                            winrt::hstring textSegmentHstr = winrt::hstring(currentRun);
+                            auto textSegment = winrt::make<FuzzySearchTextSegment>(textSegmentHstr, true);
+                            runs.Append(textSegment);
+                            currentRun.clear();
+                        }
+                        isCurrentRunHighlighted = false;
+                    }
+                }
+                currentRun += p.rowFullText[i];
+            }
+
+            if (!currentRun.empty())
+            {
+                winrt::hstring textSegmentHstr = winrt::hstring(currentRun);
+                auto textSegment = winrt::make<FuzzySearchTextSegment>(textSegmentHstr, false);
+                runs.Append(textSegment);
+            }
+
+            auto line = winrt::make<FuzzySearchTextLine>(runs, p.score, p.rowNumber, static_cast<int32_t>(p.pos->data[p.pos->size - 1]), static_cast<int32_t>(p.length));
+
+            searchResults.Append(line);
+            fzf_free_positions(p.pos);
+        }
+
+        auto fuzzySearchResult = winrt::make<FuzzySearchResult>(searchResults, numberOfNonSpaceLines, searchResults.Size());
+        return fuzzySearchResult;
+    }
+
+    void ControlCore::FuzzySearchSelectionChanged(int32_t row)
+    {
+        _fuzzySearchRenderData->SetTopRow(row);
+        LOG_IF_FAILED(_fuzzySearchRenderEngine->InvalidateAll());
+        _fuzzySearchRenderer->NotifyPaintFrame();
+    }
+
+    void ControlCore::FuzzySearchPreviewSizeChanged(const float width,
+                                                    const float height)
+    {
+        _fuzzySearchPanelWidth = width;
+        _fuzzySearchPanelHeight = height;
+
+        _fuzzySearchRenderer->EnablePainting();
+        _sizeFuzzySearchPreview();
+    }
+
+    void ControlCore::_sizeFuzzySearchPreview()
+    {
+        auto lock = _terminal->LockForWriting();
+        auto lock2 = _fuzzySearchRenderData->LockForWriting();
+
+        auto cx = gsl::narrow_cast<til::CoordType>(lrint(_fuzzySearchPanelWidth * _compositionScale));
+        auto cy = gsl::narrow_cast<til::CoordType>(lrint(_fuzzySearchPanelHeight * _compositionScale));
+
+        cx = std::max(cx, _actualFont.GetSize().width);
+        cy = std::max(cy, _actualFont.GetSize().height);
+
+        const auto viewInPixels = Viewport::FromDimensions({ 0, 0 }, { cx, cy });
+        const auto vp = _renderEngine->GetViewportInCharacters(viewInPixels);
+        _fuzzySearchRenderData->SetSize(vp.Dimensions());
+
+        auto size = til::size{ til::math::rounding, static_cast<float>(_terminal->GetViewport().Width()), static_cast<float>(_terminal->GetTextBuffer().TotalRowCount()) };
+
+        auto newTextBuffer = std::make_unique<TextBuffer>(size,
+                                                          TextAttribute{},
+                                                          0,
+                                                          true,
+                                                          *_fuzzySearchRenderer);
+
+        TextBuffer::Reflow(_terminal->GetTextBuffer(), *newTextBuffer.get());
+        _fuzzySearchRenderData->SetTextBuffer(std::move(newTextBuffer));
+        THROW_IF_FAILED(_fuzzySearchRenderEngine->SetWindowSize({ cx, cy }));
+        LOG_IF_FAILED(_fuzzySearchRenderEngine->InvalidateAll());
+        _fuzzySearchRenderer->NotifyPaintFrame();
+    }
+
 
     void ControlCore::ClearSearch()
     {

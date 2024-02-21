@@ -56,6 +56,7 @@
     ON_ALL_ACTIONS(MovePane)                \
     ON_ALL_ACTIONS(SwapPane)                \
     ON_ALL_ACTIONS(Find)                    \
+    ON_ALL_ACTIONS(FuzzyFind)               \
     ON_ALL_ACTIONS(ToggleShaderEffects)     \
     ON_ALL_ACTIONS(ToggleFocusMode)         \
     ON_ALL_ACTIONS(ToggleFullscreen)        \

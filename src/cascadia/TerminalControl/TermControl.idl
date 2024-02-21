@@ -8,6 +8,7 @@ import "IDirectKeyListener.idl";
 import "EventArgs.idl";
 import "ICoreState.idl";
 import "ControlCore.idl";
+import "FuzzySearchTextSegment.idl";
 
 namespace Microsoft.Terminal.Control
 {
@@ -138,5 +139,8 @@ namespace Microsoft.Terminal.Control
         void ShowContextMenu();
 
         void Detach();
+
+        Windows.Foundation.Collections.IObservableVector<FuzzySearchTextLine> FuzzySearchResults { get; };
+        void CreateFuzzySearchBoxControl();
     }
 }

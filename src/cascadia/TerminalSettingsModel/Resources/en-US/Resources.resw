@@ -243,6 +243,9 @@
   <data name="FindPrevCommandKey" xml:space="preserve">
     <value>Find previous search match</value>
   </data>
+  <data name="FuzzyFindCommandKey" xml:space="preserve">
+    <value>Fuzzy Find</value>
+  </data>
   <data name="IncreaseFontSizeCommandKey" xml:space="preserve">
     <value>Increase font size</value>
   </data>

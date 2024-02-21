@@ -561,6 +561,17 @@ namespace winrt::TerminalApp::implementation
         args.Handled(true);
     }
 
+    void TerminalPage::_HandleFuzzyFind(const IInspectable& sender,
+                                   const ActionEventArgs& args)
+    {
+        if (const auto activeTab{ _senderOrFocusedTab(sender) })
+        {
+            _SetFocusedTab(*activeTab);
+            _FuzzyFind(*activeTab);
+        }
+        args.Handled(true);
+    }
+
     void TerminalPage::_HandleResetFontSize(const IInspectable& /*sender*/,
                                             const ActionEventArgs& args)
     {

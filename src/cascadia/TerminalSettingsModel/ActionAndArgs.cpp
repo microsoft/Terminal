@@ -20,6 +20,7 @@ static constexpr std::string_view CopyTextKey{ "copy" };
 static constexpr std::string_view DuplicateTabKey{ "duplicateTab" };
 static constexpr std::string_view ExecuteCommandlineKey{ "wt" };
 static constexpr std::string_view FindKey{ "find" };
+static constexpr std::string_view FuzzyFindKey{ "fuzzyFind" };
 static constexpr std::string_view MoveFocusKey{ "moveFocus" };
 static constexpr std::string_view MovePaneKey{ "movePane" };
 static constexpr std::string_view SwapPaneKey{ "swapPane" };
@@ -355,6 +356,7 @@ namespace winrt::Microsoft::Terminal::Settings::Model::implementation
                 { ShortcutAction::DuplicateTab, RS_(L"DuplicateTabCommandKey") },
                 { ShortcutAction::ExecuteCommandline, RS_(L"ExecuteCommandlineCommandKey") },
                 { ShortcutAction::Find, RS_(L"FindCommandKey") },
+                { ShortcutAction::FuzzyFind, RS_(L"FuzzyFindCommandKey") },
                 { ShortcutAction::Invalid, MustGenerate },
                 { ShortcutAction::MoveFocus, RS_(L"MoveFocusCommandKey") },
                 { ShortcutAction::MovePane, RS_(L"MovePaneCommandKey") },

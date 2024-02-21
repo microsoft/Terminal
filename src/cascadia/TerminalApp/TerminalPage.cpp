@@ -3552,6 +3552,14 @@ namespace winrt::TerminalApp::implementation
         }
     }
 
+    void TerminalPage::_FuzzyFind(const TerminalTab& tab)
+    {
+        if (const auto& control{ tab.GetActiveTerminalControl() })
+        {
+            control.CreateFuzzySearchBoxControl();
+        }
+    }
+
     // Method Description:
     // - Toggles borderless mode. Hides the tab row, and raises our
     //   FocusModeChanged event.

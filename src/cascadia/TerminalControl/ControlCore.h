@@ -24,6 +24,8 @@
 #include "../../cascadia/TerminalCore/Terminal.hpp"
 #include "../buffer/out/search.h"
 #include "../buffer/out/TextColor.h"
+#include "../../cascadia/TerminalCore/FuzzySearchRenderData.hpp"
+#include "fzf/fzf.h"
 
 namespace ControlUnitTests
 {
@@ -246,6 +248,16 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         bool ShouldShowSelectCommand();
         bool ShouldShowSelectOutput();
 
+        Control::FuzzySearchResult FuzzySearch(const winrt::hstring& text);
+        bool InitializeFuzzySearch(const float actualWidth,
+                                   const float actualHeight,
+                                   const float compositionScale);
+        void FuzzySearchSelectionChanged(int32_t row);
+        void FuzzySearchPreviewSizeChanged(const float width, const float height);
+        void EnterFuzzySearchMode();
+        void ExitFuzzySearchMode();
+        void SelectChar(int32_t row, int32_t col);
+
         RUNTIME_SETTING(double, Opacity, _settings->Opacity());
         RUNTIME_SETTING(double, FocusedOpacity, FocusedAppearance().Opacity());
         RUNTIME_SETTING(bool, UseAcrylic, _settings->UseAcrylic());
@@ -275,6 +287,7 @@ namespace winrt::Microsoft::Terminal::Control::implementation
         TYPED_EVENT(UpdateSelectionMarkers,    IInspectable, Control::UpdateSelectionMarkersEventArgs);
         TYPED_EVENT(OpenHyperlink,             IInspectable, Control::OpenHyperlinkEventArgs);
         TYPED_EVENT(CompletionsChanged,        IInspectable, Control::CompletionsChangedEventArgs);
+        TYPED_EVENT(FuzzySearchSwapChainChanged,          IInspectable, IInspectable);
 
         TYPED_EVENT(CloseTerminalRequested,    IInspectable, IInspectable);
         TYPED_EVENT(RestartTerminalRequested,    IInspectable, IInspectable);
@@ -371,6 +384,17 @@ namespace winrt::Microsoft::Terminal::Control::implementation
                                    const std::chrono::microseconds duration);
 
         winrt::fire_and_forget _terminalCompletionsChanged(std::wstring_view menuJson, unsigned int replaceLength);
+        float _fuzzySearchPanelWidth{ 0 };
+        float _fuzzySearchPanelHeight{ 0 };
+        float _fuzzySearchCompositionScale{ 0 };
+        std::unique_ptr<::Microsoft::Console::Render::IRenderEngine> _fuzzySearchRenderEngine{ nullptr };
+        std::unique_ptr<::Microsoft::Console::Render::Renderer> _fuzzySearchRenderer{ nullptr };
+        std::shared_ptr<FuzzySearchRenderData> _fuzzySearchRenderData{ nullptr };
+        winrt::fire_and_forget _fuzzySearchRenderEngineSwapChainChanged(const HANDLE handle);
+        winrt::handle _fuzzySearchLastSwapChainHandle{ nullptr };
+        void _sizeFuzzySearchPreview();
+        bool _fuzzySearchActive = false;
+        fzf_slab_t* _fzfSlab;
 
 #pragma endregion
 
