@@ -894,6 +894,11 @@ bool OutputStateMachineEngine::ActionOscDispatch(const size_t parameter, const s
         success = _dispatch->DoVsCodeAction(string);
         break;
     }
+    case OscActionCodes::UrxvtAction:
+    {
+        success = _dispatch->DoUrxvtAction(string);
+        break;
+    }
     default:
         // If no functions to call, overall dispatch was a failure.
         success = false;

@@ -511,3 +511,13 @@ void Terminal::NotifyBufferRotation(const int delta)
         _NotifyScrollEvent();
     }
 }
+
+void Terminal::SendNotification(const std::wstring_view title,
+                                const std::wstring_view body)
+{
+    // Only send notifications if enabled in the settings
+    if (_pfnSendNotification && _allowNotifications)
+    {
+        _pfnSendNotification(title, body);
+    }
+}

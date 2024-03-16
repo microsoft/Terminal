@@ -29,6 +29,7 @@ public:
     void HandleCommandlineArgs(int nCmdShow);
 
 private:
+    bool _handleLaunchArgs();
     void _createNewWindowThread(const winrt::Microsoft::Terminal::Remoting::WindowRequestedArgs& args);
 
     [[nodiscard]] static LRESULT __stdcall _wndProc(HWND const window, UINT const message, WPARAM const wparam, LPARAM const lparam) noexcept;

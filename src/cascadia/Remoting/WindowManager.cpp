@@ -461,4 +461,35 @@ namespace winrt::Microsoft::Terminal::Remoting::implementation
         co_await winrt::resume_background();
         _monarch.RequestSendContent(args);
     }
+
+    // Attempt to summon an existing window. This static function does NOT
+    // pre-register as the monarch. This is used for activations from a
+    // notification, where this process should NEVER become its own window.
+    bool WindowManager::SummonForNotification(const uint64_t windowId)
+    {
+        auto monarch = create_instance<Remoting::IMonarch>(Monarch_clsid,
+                                                           CLSCTX_LOCAL_SERVER);
+
+        if (monarch == nullptr)
+        {
+            return false;
+        }
+        SummonWindowSelectionArgs args{};
+        args.WindowID(windowId);
+
+        // Summon the window...
+        // * On its current desktop
+        // * Without a dropdown
+        // * On the monitor it is already on
+        // * Do not toggle, just make visible.
+        const Remoting::SummonWindowBehavior summonArgs{};
+        summonArgs.MoveToCurrentDesktop(false);
+        summonArgs.DropdownDuration(0);
+        summonArgs.ToMonitor(Remoting::MonitorBehavior::InPlace);
+        summonArgs.ToggleVisibility(false);
+
+        args.SummonBehavior(summonArgs);
+        monarch.SummonWindow(args);
+        return true;
+    }
 }

@@ -23,6 +23,8 @@ using namespace winrt::Microsoft::Terminal::Settings::Model;
 using namespace ::Microsoft::Console;
 using namespace ::Microsoft::Console::Types;
 using namespace std::chrono_literals;
+using namespace winrt::Windows::ApplicationModel;
+using namespace winrt::Windows::UI::Notifications;
 
 // This magic flag is "documented" at https://msdn.microsoft.com/en-us/library/windows/desktop/ms646301(v=vs.85).aspx
 // "If the high-order bit is 1, the key is down; otherwise, it is up."

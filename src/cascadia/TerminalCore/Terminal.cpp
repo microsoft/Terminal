@@ -95,6 +95,7 @@ void Terminal::UpdateSettings(ICoreSettings settings)
     _startingTitle = settings.StartingTitle();
     _trimBlockSelection = settings.TrimBlockSelection();
     _autoMarkPrompts = settings.AutoMarkPrompts();
+    _allowNotifications = settings.AllowNotifications();
 
     _getTerminalInput().ForceDisableWin32InputMode(settings.ForceVTInput());
 
@@ -1158,6 +1159,11 @@ void Terminal::SetShowWindowCallback(std::function<void(bool)> pfn) noexcept
 void Terminal::SetPlayMidiNoteCallback(std::function<void(const int, const int, const std::chrono::microseconds)> pfn) noexcept
 {
     _pfnPlayMidiNote.swap(pfn);
+}
+
+void Terminal::SetSendNotificationCallback(std::function<void(std::wstring_view, std::wstring_view)> pfn) noexcept
+{
+    _pfnSendNotification.swap(pfn);
 }
 
 void Terminal::BlinkCursor() noexcept
