@@ -937,12 +937,12 @@ void ROW::_resizeChars(uint16_t colEndDirty, uint16_t chBegDirty, size_t chEndDi
     }
 }
 
-til::small_rle<TextAttribute, uint16_t, 1>& ROW::Attributes() noexcept
+ROW::AttributesType& ROW::Attributes() noexcept
 {
     return _attr;
 }
 
-const til::small_rle<TextAttribute, uint16_t, 1>& ROW::Attributes() const noexcept
+const ROW::AttributesType& ROW::Attributes() const noexcept
 {
     return _attr;
 }
