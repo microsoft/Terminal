@@ -92,6 +92,8 @@ private:
 class ROW final
 {
 public:
+    using AttributesType = til::small_rle<TextAttribute, uint16_t, 3>;
+
     // The implicit agreement between ROW and TextBuffer is that the `charsBuffer` and `charOffsetsBuffer`
     // arrays have a minimum alignment of 16 Bytes and a size of `rowWidth+1`. The former is used to
     // implement Reset() efficiently via SIMD and the latter is used to store the past-the-end offset
@@ -148,8 +150,8 @@ public:
     void ReplaceText(RowWriteState& state);
     void CopyTextFrom(RowCopyTextFromState& state);
 
-    til::small_rle<TextAttribute, uint16_t, 1>& Attributes() noexcept;
-    const til::small_rle<TextAttribute, uint16_t, 1>& Attributes() const noexcept;
+    AttributesType& Attributes() noexcept;
+    const AttributesType& Attributes() const noexcept;
     TextAttribute GetAttrByColumn(til::CoordType column) const;
     std::vector<uint16_t> GetHyperlinks() const;
     ImageSlice* SetImageSlice(ImageSlice::Pointer imageSlice) noexcept;
@@ -297,7 +299,7 @@ private:
     std::span<uint16_t> _charOffsets;
     // _attr is a run-length-encoded vector of TextAttribute with a decompressed
     // length equal to _columnCount (= 1 TextAttribute per column).
-    til::small_rle<TextAttribute, uint16_t, 1> _attr;
+    AttributesType _attr;
     // The width of the row in visual columns.
     uint16_t _columnCount = 0;
     // Stores double-width/height (DECSWL/DECDWL/DECDHL) attributes.

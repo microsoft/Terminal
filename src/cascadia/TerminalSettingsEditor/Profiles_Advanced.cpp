@@ -17,6 +17,9 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
     Profiles_Advanced::Profiles_Advanced()
     {
         InitializeComponent();
+        // The XAML -> C++ converter seems to use floats instead of doubles, which means
+        // it can't represent large numbers accurately. So, we set the property manually.
+        HistorySizeBox().Maximum(1073741823.0);
     }
 
     void Profiles_Advanced::OnNavigatedTo(const NavigationEventArgs& e)

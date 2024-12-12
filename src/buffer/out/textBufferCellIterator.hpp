@@ -53,7 +53,7 @@ protected:
     void _GenerateView() noexcept;
     static const ROW* s_GetRow(const TextBuffer& buffer, const til::point pos);
 
-    til::small_rle<TextAttribute, uint16_t, 1>::const_iterator _attrIter;
+    ROW::AttributesType::const_iterator _attrIter;
     OutputCellView _view;
 
     const ROW* _pRow;
