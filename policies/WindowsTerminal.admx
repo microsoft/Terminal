@@ -29,7 +29,9 @@
 			<parentCategory ref="WindowsTerminal"/>
 			<supportedOn ref="SUPPORTED_DefaultTerminalApplication"/>
 			<elements>
-				<enum id="TermAppSelect" required="true" valueName="DelegationTerminal">
+				<text id="TermAppDelegationTerminal" valueName="DelegationTerminal" required="true" expandable="false"/>
+				<text id="TermAppDelegationConsole" valueName="DelegationConsole" required="true" expandable="false"/>
+				<!--enum id="TermAppSelect" required="true" valueName="DelegationTerminal">
 					<item displayName="$(string.TermAppAutomatic)">
 						<value>
 							<string>{00000000-0000-0000-0000-000000000000}</string>
@@ -78,7 +80,7 @@
 							</item>
 						</valueList>
 					</item>
-				</enum>
+				</enum-->
 			</elements>
 		</policy>
 	</policies>
