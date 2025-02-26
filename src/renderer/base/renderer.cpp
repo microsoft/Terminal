@@ -25,22 +25,13 @@ static constexpr auto renderBackoffBaseTimeMilliseconds{ 150 };
 // - Creates a new renderer controller for a console.
 // Arguments:
 // - pData - The interface to console data structures required for rendering
-// - pEngine - The output engine for targeting each rendering frame
 // Return Value:
 // - An instance of a Renderer.
-Renderer::Renderer(const RenderSettings& renderSettings,
-                   IRenderData* pData,
-                   _In_reads_(cEngines) IRenderEngine** const rgpEngines,
-                   const size_t cEngines,
-                   std::unique_ptr<RenderThread> thread) :
+Renderer::Renderer(const RenderSettings& renderSettings, IRenderData* pData) :
     _renderSettings(renderSettings),
-    _pData(pData),
-    _pThread{ std::move(thread) }
+    _pData(pData)
 {
-    for (size_t i = 0; i < cEngines; i++)
-    {
-        AddRenderEngine(rgpEngines[i]);
-    }
+    THROW_IF_FAILED(_pThread->Initialize(this));
 }
 
 // Routine Description:
