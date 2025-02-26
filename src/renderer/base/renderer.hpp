@@ -28,11 +28,7 @@ namespace Microsoft::Console::Render
     class Renderer
     {
     public:
-        Renderer(const RenderSettings& renderSettings,
-                 IRenderData* pData,
-                 _In_reads_(cEngines) IRenderEngine** const pEngine,
-                 const size_t cEngines,
-                 std::unique_ptr<RenderThread> thread);
+        Renderer(const RenderSettings& renderSettings, IRenderData* pData);
 
         ~Renderer();
 
@@ -121,7 +117,7 @@ namespace Microsoft::Console::Render
         const RenderSettings& _renderSettings;
         std::array<IRenderEngine*, 2> _engines{};
         IRenderData* _pData = nullptr; // Non-ownership pointer
-        std::unique_ptr<RenderThread> _pThread;
+        std::unique_ptr<RenderThread> _pThread = std::make_unique<RenderThread>();
         static constexpr size_t _firstSoftFontChar = 0xEF20;
         size_t _lastSoftFontChar = 0;
         uint16_t _hyperlinkHoveredId = 0;
